@@ -36,3 +36,20 @@ setup-llvm.sh 用帶 guard 的 sed 做這件事（idempotent，重跑不會重�
    兩處都要加 toygpu。setup-llvm.sh 的 sed 現在兩種都 patch。
 
 C1 驗收：`define void @main(){ret void}` → `llc -mtriple=toygpu` → `RET` ✓
+
+## C2 踩坑（算術 + 特殊暫存器 lowering）
+
+5. **tblgen: def already exists: f32imm** — `f32imm` 是共用 td 的保留名
+   → 改用 `tgf32imm`。
+6. **Cannot select: fpimm → constant-pool load** — f32 常數預設 spill 到
+   constant pool，但我們沒有 load-from-memory 指令 → override
+   `isFPImmLegal` 回 true，讓 fpimm 節點留著給 LDI pattern 配。
+7. **Cannot select: STORE_OUT（TargetConstant 對 imm）** — LowerCall 用
+   `getTargetConstant` 建 index，pattern 要用 `timm` 而非 `imm` 承接。
+8. **只吐 RET，輸出全被 DCE** — STOUT 沒 side effect，machine-level DCE
+   把整條輸出鏈刪光 → STOUT 加 `let hasSideEffects = 1;`（注意：不能
+   同時顯式設 `mayStore`，會和 pattern 推導衝突，tblgen 報
+   "Pattern doesn't match mayStore = 1"）。
+
+C2 驗收：frag.ll → `llc -mtriple=toygpu` → 正好是 SPEC 的期望組語，
+再過 toyasm → GPU → 同一張漸層三角形（golden test ✓）。全鏈打通。
