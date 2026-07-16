@@ -46,8 +46,27 @@ int tgCompileShader(const char *path) {
         std::string cmd = "python3 toyasm/toyasm.py " + p + " build/shader.bin";
         if (system(cmd.c_str()) != 0) return -1;
         g_shader = loadBin("build/shader.bin");
+    } else if (endsWith(p, ".glsl")) {
+        // 完整編譯鏈：glslang → spirv2llvm → llc → toyasm。
+        // llc 路徑用環境變數 TOYGPU_LLC 覆蓋（預設用我們 build 的 llc）。
+        const char *llcEnv = getenv("TOYGPU_LLC");
+        std::string LLC = llcEnv ? llcEnv : "../llvm-project/build/bin/llc";
+        std::string b = "build/shader";
+        std::string cmd =
+            "glslangValidator -V -S frag " + p + " -o " + b + ".spv && "
+            "build/spirv2llvm " + b + ".spv " + b + ".ll && " +
+            LLC + " -mtriple=toygpu " + b + ".ll -o " + b + ".s.raw && "
+            // 濾掉 llc 的 directive/label，只留指令給 toyasm
+            "grep -E '^[[:space:]]+(LDIN|LDUNI|STOUT|LDI|FADD|FSUB|FMUL|FMA|MOV|RET|NOP)' "
+            + b + ".s.raw | sed 's/e+00//' > " + b + ".s && "
+            "python3 toyasm/toyasm.py " + b + ".s " + b + ".bin";
+        if (system(cmd.c_str()) != 0) {
+            fprintf(stderr, "toygl: GLSL compile chain failed\n");
+            return -1;
+        }
+        g_shader = loadBin(b + ".bin");
     } else {
-        fprintf(stderr, "toygl: unsupported shader type: %s (v1 supports .s/.bin)\n", path);
+        fprintf(stderr, "toygl: unsupported shader type: %s\n", path);
         return -1;
     }
     return g_shader.empty() ? -1 : 0;

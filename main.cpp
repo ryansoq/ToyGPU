@@ -5,7 +5,7 @@
 int main() {
     tgInit(512, 512);
 
-    if (tgCompileShader("shaders/gradient.s") != 0) return 1;
+    if (tgCompileShader("shaders/frag.glsl") != 0) return 1;
     tgBindShader(0);
 
     TgVertex2 v[3] = {

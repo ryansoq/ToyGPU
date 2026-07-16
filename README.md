@@ -14,17 +14,30 @@ triangle.png ◀──軟體GPU(rasterizer+interpreter)★◀── frag.bin ◀
 
 ## 階段進度
 
-- [ ] 階段 1：軟體 GPU + toyasm + toygl（手寫 .s 畫出漸層三角形）
-- [ ] 階段 2：LLVM ToyGPU backend（llc 吐 .s）
-- [ ] 階段 3：spirv2llvm（SPIR-V walker → LLVM IR）
-- [ ] 階段 4：pipeline 串接（GLSL 一鍵出圖）
+- [x] 階段 1：軟體 GPU + toyasm + toygl（手寫 .s 畫出漸層三角形）✅
+- [x] 階段 2：LLVM ToyGPU backend（真 target porting，llc 吐 .s）✅
+- [x] 階段 3：spirv2llvm（SPIR-V walker → LLVM IR）✅
+- [x] 階段 4：pipeline 串接（GLSL 一鍵出圖）✅
 
-## 快速開始（階段 1）
+**全部完成** — `./triangle` 從 `frag.glsl` 一路到 `triangle.png`，
+中間 `.spv/.ll/.s/.bin` 全部落在 `build/` 可單獨檢查。
+
+## 快速開始
 
 ```bash
-make            # 編譯 gpu + demo
-make test       # 跑 golden test
-./triangle      # 產出 triangle.png（512×512 漸層三角形）
+# 先建 LLVM backend（第一次 ~30-60 分鐘）
+bash backend/setup-llvm.sh && ninja -C ~/llvm-project/build llc
+
+# 然後一鍵從 GLSL 出圖
+make            # 編譯 gpu + spirv2llvm + demo
+./triangle      # frag.glsl → glslang → spirv2llvm → llc → toyasm → GPU → PNG
+make test       # golden pixel test
+
+# 逐站檢查中間產物
+ls build/       # shader.spv / shader.ll / shader.s / shader.bin
+spirv-dis build/shader.spv       # 看 SPIR-V
+cat build/shader.ll              # 看 LLVM IR
+cat build/shader.s               # 看 ToyGPU 組語
 ```
 
 詳細規格見 [SPEC.md](SPEC.md)，ISA 定義見 [isa.md](isa.md)。
