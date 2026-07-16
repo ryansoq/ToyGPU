@@ -1,0 +1,6 @@
+build/
+*.o
+triangle
+triangle.png
+*.bin
+__pycache__/
