@@ -7,6 +7,7 @@ triangle: $(SRC) gpu/*.h toygl/toygl.h
 	$(CXX) $(CXXFLAGS) $(SRC) -o $@
 
 test: triangle
+	@mkdir -p build
 	g++ $(CXXFLAGS) tests/test_shader_core.cpp gpu/shader_core.cpp -o build/test_shader_core
 	./build/test_shader_core
 	./triangle
